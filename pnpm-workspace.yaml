@@ -1,0 +1,6 @@
+packages:
+  - "Mini_Apty/*"
+allowBuilds:
+  '@swc/core': true
+  esbuild: true
+  sqlite3: true

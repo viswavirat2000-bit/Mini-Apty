@@ -1,0 +1,53 @@
+# Node dependencies
+node_modules/
+.pnpm/
+
+# pnpm store
+.pnpm-store/
+
+# Build output
+dist/
+build/
+out/
+
+# Local runtime data
+*.sqlite
+*.sqlite3
+/data/
+Mini_Apty/backend/data/
+Mini_Apty/extension/data/
+
+# Environment files
+.env
+.env.*
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor directories and files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test output
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Chrome extension build artifacts
+Mini_Apty/extension/dist/
+Mini_Apty/extension/.cache/

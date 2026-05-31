@@ -1,0 +1,118 @@
+:root {
+  color-scheme: dark;
+}
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+}
+.container {
+  padding: 16px;
+  width: 360px;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+header h1 {
+  font-size: 1.2rem;
+  margin: 0;
+}
+.field {
+  margin-bottom: 10px;
+}
+.field label {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+input,
+textarea {
+  width: 100%;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  color: #e2e8f0;
+  padding: 10px;
+  font-size: 0.95rem;
+}
+textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+button {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+button.primary {
+  background: #2563eb;
+  color: white;
+}
+button.secondary {
+  background: transparent;
+  color: #93c5fd;
+  border: 1px solid #334155;
+  margin-top: 8px;
+}
+.steps,
+.walkthrough-card,
+.step-card {
+  margin-top: 12px;
+}
+.step-card,
+.walkthrough-card {
+  background: #111827;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 10px;
+}
+.step-header {
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.target-preview {
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+.tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.tab-button {
+  flex: 1;
+  background: #1e293b;
+  color: #cbd5e1;
+}
+.tab-button.active {
+  background: #2563eb;
+  color: white;
+}
+.error-banner {
+  background: #f43f5e;
+  color: white;
+  padding: 10px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+footer {
+  margin-top: 16px;
+  color: #94a3b8;
+  font-size: 0.82rem;
+}
+.page-context {
+  margin-bottom: 10px;
+  color: #cbd5e1;
+}
+.pane {
+  display: grid;
+  gap: 16px;
+}

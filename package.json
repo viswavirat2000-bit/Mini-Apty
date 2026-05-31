@@ -1,0 +1,15 @@
+{
+  "name": "mini-apty-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "Mini_Apty/*"
+  ],
+  "scripts": {
+    "typecheck": "pnpm -w -r -s run tsc --noEmit",
+    "build": "pnpm -w -r -s run build",
+    "dev:backend": "pnpm --filter @mini-apty/backend dev",
+    "build:extension": "pnpm --filter @mini-apty/extension build",
+    "lint": "echo \"Add lint scripts per-package\""
+  }
+}

@@ -4,6 +4,9 @@ const STORAGE_KEYS = {
   token: "miniAptyAuthToken",
   user: "miniAptyUser",
   cachedWalkthroughs: "miniAptyCachedWalkthroughs",
+  pendingSteps: "miniAptyPendingSteps",
+  draftTitle: "miniAptyDraftTitle",
+  draftPathPattern: "miniAptyDraftPathPattern",
 };
 
 export async function getToken(): Promise<string | null> {
@@ -28,4 +31,35 @@ export async function getCachedWalkthroughs(origin: string, path: string): Promi
   const key = `${STORAGE_KEYS.cachedWalkthroughs}:${origin}:${path}`;
   const result = await chrome.storage.local.get(key);
   return result[key] || null;
+}
+
+export async function getPendingSteps(): Promise<any[]> {
+  const result = await chrome.storage.local.get(STORAGE_KEYS.pendingSteps);
+  return result[STORAGE_KEYS.pendingSteps] || [];
+}
+
+export async function setPendingSteps(steps: any[]): Promise<void> {
+  await chrome.storage.local.set({ [STORAGE_KEYS.pendingSteps]: steps });
+}
+
+export async function clearPendingSteps(): Promise<void> {
+  await chrome.storage.local.remove(STORAGE_KEYS.pendingSteps);
+}
+
+export async function getDraftTitle(): Promise<string | null> {
+  const result = await chrome.storage.local.get(STORAGE_KEYS.draftTitle);
+  return result[STORAGE_KEYS.draftTitle] || null;
+}
+
+export async function setDraftTitle(title: string): Promise<void> {
+  await chrome.storage.local.set({ [STORAGE_KEYS.draftTitle]: title });
+}
+
+export async function getDraftPathPattern(): Promise<string | null> {
+  const result = await chrome.storage.local.get(STORAGE_KEYS.draftPathPattern);
+  return result[STORAGE_KEYS.draftPathPattern] || null;
+}
+
+export async function setDraftPathPattern(pathPattern: string): Promise<void> {
+  await chrome.storage.local.set({ [STORAGE_KEYS.draftPathPattern]: pathPattern });
 }

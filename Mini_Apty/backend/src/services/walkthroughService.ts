@@ -5,6 +5,7 @@ export interface WalkthroughStep {
     id?: string;
     selector?: string;
     text?: string;
+    value?: string;
     role?: string;
     attributes?: Record<string, string>;
   };

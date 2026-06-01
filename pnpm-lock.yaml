@@ -22,6 +22,9 @@ importers:
       sqlite3:
         specifier: ^5.1.6
         version: 5.1.7
+      swagger-ui-express:
+        specifier: ^4.6.3
+        version: 4.6.3(express@4.22.2)
     devDependencies:
       '@types/bcryptjs':
         specifier: ^2.4.6
@@ -378,6 +381,9 @@ packages:
     resolution: {integrity: sha512-QVTUovf40zgTqlFVrKA1uXMVvU2QWEFWfAH8Wdc48IxLvrJMQVMBRjuQyUpzZCDkakImib9eVazbWlC6ksWtJw==}
     cpu: [x64]
     os: [win32]
+
+  '@scarf/scarf@1.4.0':
+    resolution: {integrity: sha512-xxeapPiUXdZAE3che6f3xogoJPeZgig6omHEy1rIY5WVsB3H2BHNnZH+gHG6x91SCWyQCzWGsuL2Hh3ClO5/qQ==}
 
   '@swc/core-darwin-arm64@1.15.40':
     resolution: {integrity: sha512-PaYyclfmQ++77D8ityYvmmVzHv9aG8ROwt2GfG6/ccloy4Hgf80qtOnzb9VYvPsUT7Ty1uhuDRhv3XYpf62qhQ==}
@@ -1404,6 +1410,15 @@ packages:
     resolution: {integrity: sha512-ot0WnXS9fgdkgIcePe6RHNk1WA8+muPa6cSjeR3V8K27q9BB1rTE3R1p7Hv0z1ZyAc8s6Vvv8DIyWf681MAt0w==}
     engines: {node: '>= 0.4'}
 
+  swagger-ui-dist@5.32.6:
+    resolution: {integrity: sha512-75ttZNaYCLoFPnozPZcTUU6mS3wKT8l7WLjU5zJSHFeJa23i5vtnze6IiCl4jDMPeQTXVXIgovq4M11NNfQvSA==}
+
+  swagger-ui-express@4.6.3:
+    resolution: {integrity: sha512-CDje4PndhTD2HkgyKH3pab+LKspDeB/NhPN2OF1j+piYIamQqBYwAXWESOT1Yju2xFg51bRW9sUng2WxDjzArw==}
+    engines: {node: '>= v0.10.32'}
+    peerDependencies:
+      express: '>=4.0.0 || >=5.0.0-beta'
+
   tar-fs@2.1.4:
     resolution: {integrity: sha512-mDAjwmZdh7LTT6pNleZ05Yt65HC3E+NiQzl672vQG38jIrehtJk/J3mNwIg+vShQPcLF/LV7CMnDW6vjj6sfYQ==}
 
@@ -1723,6 +1738,8 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.60.4':
     optional: true
+
+  '@scarf/scarf@1.4.0': {}
 
   '@swc/core-darwin-arm64@1.15.40':
     optional: true
@@ -2897,6 +2914,15 @@ snapshots:
   strip-json-comments@2.0.1: {}
 
   supports-preserve-symlinks-flag@1.0.0: {}
+
+  swagger-ui-dist@5.32.6:
+    dependencies:
+      '@scarf/scarf': 1.4.0
+
+  swagger-ui-express@4.6.3(express@4.22.2):
+    dependencies:
+      express: 4.22.2
+      swagger-ui-dist: 5.32.6
 
   tar-fs@2.1.4:
     dependencies:

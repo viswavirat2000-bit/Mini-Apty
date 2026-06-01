@@ -1,6 +1,7 @@
 packages:
   - "Mini_Apty/*"
 allowBuilds:
+  '@scarf/scarf': true
   '@swc/core': true
   esbuild: true
   sqlite3: true

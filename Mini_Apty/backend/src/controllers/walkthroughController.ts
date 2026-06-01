@@ -21,6 +21,7 @@ function normalizeSteps(input: any): walkthroughService.WalkthroughStep[] {
         id: typeof target.id === "string" ? target.id : undefined,
         selector: typeof target.selector === "string" ? target.selector : undefined,
         text: typeof target.text === "string" ? target.text : undefined,
+        value: typeof target.value === "string" ? target.value : undefined,
         role: typeof target.role === "string" ? target.role : undefined,
         attributes: typeof target.attributes === "object" && target.attributes ? target.attributes : undefined,
       },

@@ -78,13 +78,14 @@ function App() {
       if (storedPathPattern) {
         setDraftPathPattern(storedPathPattern);
       }
-
-      if (storedToken) {
-        refreshWalkthroughs(storedToken, currentOrigin, currentPath);
-      }
     };
     load();
   }, []);
+
+  useEffect(() => {
+    if (!origin || !path) return;
+    refreshWalkthroughs(token, origin, path).catch(() => null);
+  }, [token, origin, path]);
 
   useEffect(() => {
     const messageListener = (message: any) => {
@@ -262,6 +263,7 @@ function App() {
       await persistDraftPathPattern("%/*");
       await clearPendingSteps();
       setStatus("Walkthrough saved.");
+      await refreshWalkthroughs(token, origin, path);
     } catch (err: any) {
       setError(err.message || "Failed to save walkthrough.");
     }
@@ -285,6 +287,7 @@ function App() {
       await deleteWalkthrough(id);
       setMyWalkthroughs((prev) => prev.filter((item) => item.id !== id));
       setStatus("Walkthrough deleted.");
+      await refreshWalkthroughs(token, origin, path);
     } catch (err: any) {
       setError(err.message || "Failed to delete walkthrough.");
     }
@@ -398,18 +401,21 @@ function App() {
 
   const playbackPane = (
     <div>
-      <h2>Available Walkthroughs</h2>
-      {relevantWalkthroughs.length ? (
-        relevantWalkthroughs.map((walkthrough) => (
-          <div key={walkthrough.id} className="walkthrough-card">
-            <strong>{walkthrough.title}</strong>
-            <div>{walkthrough.steps.length} steps</div>
-            <button onClick={() => handleStartPlayback(walkthrough)}>Start Playback</button>
-          </div>
-        ))
-      ) : (
-        <div>No walkthroughs available for this page.</div>
-      )}
+      <section>
+        <h2>Saved Walkthroughs</h2>
+        {myWalkthroughs.length ? (
+          myWalkthroughs.map((walkthrough) => (
+            <div key={walkthrough.id} className="walkthrough-card">
+              <strong>{walkthrough.title}</strong>
+              <div>{walkthrough.origin}{walkthrough.pathPattern ? ` ${walkthrough.pathPattern}` : ""}</div>
+              <div>{walkthrough.steps.length} steps</div>
+              <button onClick={() => handleStartPlayback(walkthrough)}>Start Playback</button>
+            </div>
+          ))
+        ) : (
+          <div>No saved walkthroughs yet.</div>
+        )}
+      </section>
       <div className="field" style={{ marginTop: "12px" }}>
         <label>Playback diagnostics</label>
         <div>{lastRelevantFetchInfo || "No lookup performed yet."}</div>

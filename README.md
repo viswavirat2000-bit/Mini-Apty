@@ -10,6 +10,13 @@ Quick prerequisites
 - Node.js 18+ (for local builds)
 - Docker & Docker Compose (optional — recommended for running backend cleanly)
 
+Root scripts
+```bash
+npm run typecheck
+npm run build
+npm run ci
+```
+
 Local dev (quick)
 1. Install dependencies at repo root (pnpm recommended):
 
@@ -56,13 +63,10 @@ What is implemented
 Known limitations / trade-offs
 - Targeting: uses `id`, generated CSS selector, `data-*` attributes and text fallback. This is pragmatic but not as robust as a full multi-factor semantic resolver (no `aria-label`/`name` anchors or advanced heuristics yet).
 - In-page UI: the capture/playback overlay is DOM-based in the content script rather than an injected React component; simpler and smaller but less structured.
-- Error handling: API errors are surfaced in the popup, but there is no React Error Boundary implemented yet.
+- Error handling: API errors are normalized and surfaced cleanly in the popup, and a React Error Boundary is implemented.
 - Docker: SQLite is used for simplicity. For production or multi-user testing, swap to Postgres (not included).
 
 Next recommended improvements (low effort → high impact)
-- Add `aria/name` and relative-label heuristics to `content.ts` target collection
-- Add React Error Boundary in `Mini_Apty/extension/src/popup.tsx`
-- Add `.env` support and `.env.example` (added) and Docker Compose (added)
 - Add integration tests and a short demo video showing author → playback on a public page
 
 Repro steps to demo (5 minutes)

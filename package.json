@@ -6,10 +6,14 @@
     "Mini_Apty/*"
   ],
   "scripts": {
-    "typecheck": "pnpm -w -r -s run tsc --noEmit",
-    "build": "pnpm -w -r -s run build",
-    "dev:backend": "pnpm --filter @mini-apty/backend dev",
-    "build:extension": "pnpm --filter @mini-apty/extension build",
+    "typecheck:extension": "cd Mini_Apty/extension && npm run tsc -- --noEmit",
+    "typecheck:backend": "cd Mini_Apty/backend && npm run tsc -- --noEmit",
+    "typecheck": "npm run typecheck:extension && npm run typecheck:backend",
+    "build:extension": "cd Mini_Apty/extension && npm run build",
+    "build:backend": "cd Mini_Apty/backend && npm run build",
+    "build": "npm run build:extension && npm run build:backend",
+    "ci": "npm run typecheck && npm run build",
+    "dev:backend": "cd Mini_Apty/backend && npm run dev",
     "lint": "echo \"Add lint scripts per-package\""
   }
 }

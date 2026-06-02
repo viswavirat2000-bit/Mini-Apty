@@ -5,6 +5,7 @@ console.log("Mini Apty content script loaded", { url: window.location.href });
 interface PlaybackState {
   walkthrough: Walkthrough;
   stepIndex: number;
+  lastExecutedStepIndex?: number;
   balloon?: HTMLElement;
   highlight?: HTMLElement;
 }
@@ -129,6 +130,7 @@ function enableCapture() {
   if (captureEnabled) return;
   captureEnabled = true;
   captureCount = 0;
+  chrome.storage.local.set({ miniAptyCaptureActive: true });
   document.body.style.cursor = "crosshair";
   document.addEventListener("click", handleCaptureClick, true);
   document.addEventListener("change", handleCaptureFieldChange, true);
@@ -140,6 +142,7 @@ function enableCapture() {
 
 function disableCapture() {
   captureEnabled = false;
+  chrome.storage.local.set({ miniAptyCaptureActive: false });
   document.body.style.cursor = "";
   document.removeEventListener("click", handleCaptureClick, true);
   document.removeEventListener("change", handleCaptureFieldChange, true);
@@ -267,21 +270,26 @@ function renderPlayback() {
     return;
   }
   console.debug("Playback: resolved target", { stepIndex, selector: step.target.selector, id: step.target.id, element: target });
-  if (step.target.value && (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)) {
-    try {
-      target.value = step.target.value;
-      target.dispatchEvent(new Event("input", { bubbles: true }));
-      target.dispatchEvent(new Event("change", { bubbles: true }));
-    } catch (error) {
-      console.warn("Playback value assignment failed", error);
+  const alreadyExecuted = playbackState.lastExecutedStepIndex === stepIndex;
+  if (!alreadyExecuted) {
+    if (step.target.value && (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)) {
+      try {
+        target.value = step.target.value;
+        target.dispatchEvent(new Event("input", { bubbles: true }));
+        target.dispatchEvent(new Event("change", { bubbles: true }));
+      } catch (error) {
+        console.warn("Playback value assignment failed", error);
+      }
     }
-  }
-  if (step.trigger === "click") {
-    try {
-      target.click();
-    } catch (error) {
-      console.warn("Playback click action failed", error);
+    if (step.trigger === "click") {
+      try {
+        target.click();
+      } catch (error) {
+        console.warn("Playback click action failed", error);
+      }
     }
+    playbackState.lastExecutedStepIndex = stepIndex;
+    savePlaybackState();
   }
   if (step.trigger === "manual" || target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
     try {
@@ -360,11 +368,13 @@ function handleBalloonClick(event: MouseEvent) {
   event.stopPropagation();
   if (action === "prev") {
     playbackState.stepIndex = Math.max(0, playbackState.stepIndex - 1);
+    savePlaybackState();
     renderPlayback();
     saveProgress(playbackState.stepIndex);
   } else if (action === "next") {
     if (playbackState.stepIndex + 1 < playbackState.walkthrough.steps.length) {
       playbackState.stepIndex += 1;
+      savePlaybackState();
       renderPlayback();
       saveProgress(playbackState.stepIndex);
     } else {
@@ -378,6 +388,21 @@ function handleBalloonClick(event: MouseEvent) {
 function stopPlayback() {
   removePlaybackUI();
   playbackState = null;
+  chrome.storage.local.set({ miniAptyPlaybackState: null });
+}
+
+function savePlaybackState() {
+  if (!playbackState) {
+    chrome.storage.local.set({ miniAptyPlaybackState: null });
+    return;
+  }
+  chrome.storage.local.set({
+    miniAptyPlaybackState: {
+      walkthrough: playbackState.walkthrough,
+      stepIndex: playbackState.stepIndex,
+      lastExecutedStepIndex: playbackState.lastExecutedStepIndex,
+    },
+  });
 }
 
 async function handleMessage(message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) {
@@ -399,6 +424,7 @@ async function handleMessage(message: any, sender: chrome.runtime.MessageSender,
       walkthrough: message.walkthrough as Walkthrough,
       stepIndex: message.stepIndex ?? 0,
     };
+    savePlaybackState();
     renderPlayback();
     sendResponse({ status: "playing" });
   }
@@ -413,6 +439,61 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   handleMessage(message, sender, sendResponse);
   return true;
 });
+
+function onSpaRouteChange() {
+  console.log("Mini Apty SPA route change detected", window.location.href);
+  if (captureEnabled) {
+    if (!currentCaptureOverlay) createCaptureOverlay();
+    updateCaptureOverlayMessage();
+  }
+  if (playbackState) {
+    removePlaybackUI();
+    renderPlayback();
+  }
+}
+
+function watchSpaNavigation() {
+  const originalPushState = history.pushState;
+  const originalReplaceState = history.replaceState;
+
+  history.pushState = function (this: History, ...args: [any, string, string | URL | null | undefined]) {
+    const result = originalPushState.apply(this, args);
+    setTimeout(onSpaRouteChange, 0);
+    return result;
+  };
+
+  history.replaceState = function (this: History, ...args: [any, string, string | URL | null | undefined]) {
+    const result = originalReplaceState.apply(this, args);
+    setTimeout(onSpaRouteChange, 0);
+    return result;
+  };
+
+  window.addEventListener("popstate", onSpaRouteChange);
+}
+
+// Restore capture state across page navigations
+chrome.storage.local.get("miniAptyCaptureActive", (result) => {
+  if (result.miniAptyCaptureActive === true) {
+    console.log("Mini Apty restoring capture mode on new page");
+    enableCapture();
+  }
+});
+
+// Restore playback state across page navigations
+chrome.storage.local.get("miniAptyPlaybackState", (result) => {
+  const state = result.miniAptyPlaybackState;
+  if (state && state.walkthrough && typeof state.stepIndex === "number") {
+    console.log("Mini Apty restoring playback on new page", { walkthroughId: state.walkthrough.id, stepIndex: state.stepIndex });
+    playbackState = {
+      walkthrough: state.walkthrough,
+      stepIndex: state.stepIndex,
+      lastExecutedStepIndex: typeof state.lastExecutedStepIndex === "number" ? state.lastExecutedStepIndex : undefined,
+    };
+    renderPlayback();
+  }
+});
+
+watchSpaNavigation();
 
 const style = document.createElement("style");
 style.textContent = `

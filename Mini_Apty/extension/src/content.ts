@@ -41,6 +41,72 @@ function collectTarget(target: Element): WalkthroughStepTarget {
       attributes[attr.name] = attr.value;
     }
   }
+  // capture common semantic attributes
+  const ariaLabel = (target as HTMLElement).getAttribute("aria-label") || undefined;
+  const nameAttr = (target as HTMLElement).getAttribute("name") || undefined;
+  const titleAttr = (target as HTMLElement).getAttribute("title") || undefined;
+  const altAttr = (target as HTMLElement).getAttribute("alt") || undefined;
+  const hrefAttr = ((target as HTMLAnchorElement).href && target.tagName.toLowerCase() === "a") ? (target as HTMLAnchorElement).getAttribute("href") || undefined : undefined;
+  // anchor/context heuristics: find associated <label> or nearby text
+  let anchorText: string | undefined = undefined;
+  try {
+    if ((target as HTMLElement).id) {
+      const lbl = document.querySelector(`label[for="${CSS.escape((target as HTMLElement).id)}"]`);
+      if (lbl && lbl instanceof HTMLElement) anchorText = lbl.innerText?.trim() || undefined;
+    }
+    if (!anchorText) {
+      // closest label ancestor
+      const ancestorLabel = (target as HTMLElement).closest("label");
+      if (ancestorLabel) anchorText = (ancestorLabel as HTMLElement).innerText?.trim() || undefined;
+    }
+    if (!anchorText) {
+      // preceding sibling with text
+      const prev = (target as HTMLElement).previousElementSibling as HTMLElement | null;
+      if (prev && prev.innerText && prev.innerText.trim().length) anchorText = prev.innerText.trim().slice(0, 120);
+    }
+  } catch (e) {
+    anchorText = undefined;
+  }
+  // context selector: selector for nearest parent with id or class (up to 3 levels)
+  let contextSelector: string | undefined = undefined;
+  try {
+    let p = (target as HTMLElement).parentElement;
+    const parts: string[] = [];
+    let depth = 0;
+    while (p && depth < 3) {
+      if (p.id) {
+        parts.unshift(`#${CSS.escape(p.id)}`);
+        break;
+      }
+      let seg = p.tagName.toLowerCase();
+      if (p.className) {
+        const cls = p.className.toString().trim().split(/\s+/).filter(Boolean);
+        if (cls.length) seg += `.${CSS.escape(cls[0])}`;
+      }
+      parts.unshift(seg);
+      p = p.parentElement;
+      depth += 1;
+    }
+    if (parts.length) contextSelector = parts.join(">");
+  } catch (e) {
+    contextSelector = undefined;
+  }
+  // path signature: simple chain of tag names up to body
+  let pathSignature: string | undefined = undefined;
+  try {
+    const chain: string[] = [];
+    let c: HTMLElement | null = target as HTMLElement;
+    let limit = 0;
+    while (c && limit < 8 && c.tagName.toLowerCase() !== 'html') {
+      const idx = Array.from(c.parentElement ? Array.from(c.parentElement.children) : []).indexOf(c) + 1;
+      chain.unshift(`${c.tagName.toLowerCase()}:nth-child(${idx})`);
+      c = c.parentElement;
+      limit += 1;
+    }
+    if (chain.length) pathSignature = chain.join('>');
+  } catch (e) {
+    pathSignature = undefined;
+  }
   const value = (() => {
     if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) {
       return target.value || undefined;
@@ -54,6 +120,14 @@ function collectTarget(target: Element): WalkthroughStepTarget {
     value,
     role: target.getAttribute("role") || undefined,
     attributes: Object.keys(attributes).length ? attributes : undefined,
+    ariaLabel,
+    name: nameAttr,
+    title: titleAttr,
+    alt: altAttr,
+    href: hrefAttr,
+    anchorText,
+    contextSelector,
+    pathSignature,
   };
 }
 
@@ -219,9 +293,88 @@ function resolveTarget(target: WalkthroughStepTarget): HTMLElement | null {
       console.warn("Invalid selector during playback resolution:", target.selector, error);
     }
   }
+  // Try matching by semantic attributes captured during authoring
+  if (target.ariaLabel) {
+    const byAria = Array.from(document.querySelectorAll("*[aria-label]")) as HTMLElement[];
+    const found = byAria.find((el) => (el.getAttribute("aria-label") || "").trim() === target.ariaLabel?.trim());
+    if (found) return found;
+  }
+  if (target.name) {
+    const byName = Array.from(document.querySelectorAll("*[name]")) as HTMLElement[];
+    const found = byName.find((el) => (el.getAttribute("name") || "").trim() === target.name?.trim());
+    if (found) return found;
+  }
+  if (target.href) {
+    const links = Array.from(document.querySelectorAll("a[href]") ) as HTMLAnchorElement[];
+    const found = links.find((a) => {
+      const href = a.getAttribute("href") || "";
+      return href === target.href || href.endsWith(target.href || "") || href.includes(target.href || "");
+    });
+    if (found) return found as HTMLElement;
+  }
+  if (target.title) {
+    const byTitle = Array.from(document.querySelectorAll("*[title]")) as HTMLElement[];
+    const found = byTitle.find((el) => (el.getAttribute("title") || "").trim() === target.title?.trim());
+    if (found) return found;
+  }
+  if (target.alt) {
+    const byAlt = Array.from(document.querySelectorAll("img[alt], area[alt]")) as HTMLElement[];
+    const found = byAlt.find((el) => (el.getAttribute("alt") || "").trim() === target.alt?.trim());
+    if (found) return found;
+  }
+  // Anchor/context matching: try label association or nearby text
+  if (target.anchorText) {
+    const labels = Array.from(document.querySelectorAll('label')) as HTMLLabelElement[];
+    const lbl = labels.find((l) => (l.innerText || '').trim() === target.anchorText?.trim());
+    if (lbl) {
+      // if label has for attribute, find the control
+      const forAttr = lbl.getAttribute('for');
+      if (forAttr) {
+        const control = document.getElementById(forAttr);
+        if (control instanceof HTMLElement) return control;
+      }
+      // otherwise, find input/select/textarea inside label
+      const control = lbl.querySelector('input,select,textarea,button,a') as HTMLElement | null;
+      if (control) return control;
+    }
+    // fallback: find element whose previous sibling's text equals anchorText
+    const candidates = Array.from(document.querySelectorAll('*')) as HTMLElement[];
+    const found = candidates.find((el) => {
+      const prev = el.previousElementSibling as HTMLElement | null;
+      return prev && (prev.innerText || '').trim() === target.anchorText?.trim();
+    });
+    if (found) return found;
+  }
+  // If contextSelector provided, search within that context first
+  if (target.contextSelector) {
+    try {
+      const contexts = Array.from(document.querySelectorAll(target.contextSelector)) as HTMLElement[];
+      for (const ctx of contexts) {
+        if (target.selector) {
+          const el = ctx.querySelector(target.selector);
+          if (el instanceof HTMLElement) return el;
+        }
+        if (target.text && ctx.innerText && ctx.innerText.includes(target.text)) {
+          // find element inside ctx with that text
+          const inner = Array.from(ctx.querySelectorAll('*')) as HTMLElement[];
+          const found = inner.find((el) => (el.innerText || '').trim() === target.text?.trim());
+          if (found) return found;
+        }
+      }
+    } catch (e) {
+      // ignore invalid context selectors
+    }
+  }
   if (target.text) {
     const candidates = Array.from(document.querySelectorAll("*:not(script):not(style)")) as HTMLElement[];
-    return candidates.find((el) => el.innerText.trim() === target.text) || null;
+    // prefer exact text match, then startsWith, then includes
+    let found = candidates.find((el) => el.innerText.trim() === target.text);
+    if (found) return found;
+    found = candidates.find((el) => el.innerText.trim().startsWith(target.text || ""));
+    if (found) return found;
+    found = candidates.find((el) => el.innerText.trim().includes(target.text || ""));
+    if (found) return found;
+    return null;
   }
   return null;
 }

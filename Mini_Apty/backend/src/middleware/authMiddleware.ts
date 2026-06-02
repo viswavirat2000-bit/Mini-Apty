@@ -14,8 +14,9 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
   }
   const token = authHeader.slice(7);
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as { sub: number; email: string };
-    req.user = { id: payload.sub, email: payload.email };
+    const payload = jwt.verify(token, JWT_SECRET) as any;
+    if (!payload || typeof payload.sub !== "number") return res.status(401).json({ error: "invalid token" });
+    req.user = { id: Number(payload.sub), email: String(payload.email || "") };
     return next();
   } catch (err) {
     return res.status(401).json({ error: "invalid token" });

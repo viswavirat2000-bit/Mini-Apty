@@ -467,7 +467,51 @@ function App() {
   );
 }
 
+class ErrorBoundary extends React.Component<{}, { hasError: boolean; error?: Error | null; info?: React.ErrorInfo | null }> {
+  constructor(props: {}) {
+    super(props);
+    this.state = { hasError: false, error: null, info: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("Popup ErrorBoundary caught:", error, info);
+    this.setState({ error, info });
+  }
+
+  handleReload = () => {
+    try {
+      // attempt graceful reload of the popup
+      window.location.reload();
+    } catch {
+      // fallback: no-op
+    }
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: 12, fontFamily: "sans-serif" }}>
+          <h2>Something went wrong</h2>
+          <div style={{ whiteSpace: "pre-wrap", fontSize: 12, color: "#b00020" }}>{String(this.state.error?.message || "Unknown error")}</div>
+          <div style={{ marginTop: 12 }}>
+            <button onClick={this.handleReload} className="primary">Reload</button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children as React.ReactElement;
+  }
+}
+
 const root = document.getElementById("root");
 if (root) {
-  createRoot(root).render(<App />);
+  createRoot(root).render(
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  );
 }

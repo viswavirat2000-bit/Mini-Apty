@@ -11,7 +11,7 @@ import {
 } from "../controllers/walkthroughController";
 import { requireAuth } from "../middleware/authMiddleware";
 
-const router = express.Router();
+const router: express.Router = express.Router();
 
 router.use(requireAuth);
 

@@ -37,7 +37,7 @@ const openapiSpec = {
   }
 };
 
-const app = express();
+const app: express.Express = express();
 
 app.use(express.json());
 
@@ -49,11 +49,9 @@ app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
 
 app.get("/health", (req, res) => res.json({ status: "ok" }));
 
-// error handler
-app.use((err: any, req: any, res: any, next: any) => {
-  console.error(err);
-  res.status(500).json({ error: err?.message || "internal_error" });
-});
+// error normalizer middleware
+import errorNormalizer from "./middleware/errorNormalizer";
+app.use(errorNormalizer);
 
 // run migrations on start
 migrate().catch((err) => console.error("Migration error", err));

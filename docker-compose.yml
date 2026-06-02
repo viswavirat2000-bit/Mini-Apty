@@ -1,0 +1,14 @@
+version: '3.8'
+services:
+  backend:
+    build:
+      context: ./Mini_Apty/backend
+      dockerfile: Dockerfile
+    image: mini-apty-backend:latest
+    env_file:
+      - ./Mini_Apty/backend/.env.example
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./Mini_Apty/backend/data:/app/data
+    restart: unless-stopped

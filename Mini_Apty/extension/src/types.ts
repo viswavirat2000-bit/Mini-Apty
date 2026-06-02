@@ -5,6 +5,16 @@ export interface WalkthroughStepTarget {
   value?: string;
   role?: string;
   attributes?: Record<string, string>;
+  // Accessibility / semantic hints captured during authoring
+  ariaLabel?: string;
+  name?: string;
+  title?: string;
+  alt?: string;
+  href?: string;
+  // Fallback hints for contextual matching
+  anchorText?: string;
+  contextSelector?: string;
+  pathSignature?: string;
 }
 
 export interface WalkthroughStep {

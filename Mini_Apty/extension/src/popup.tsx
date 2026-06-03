@@ -402,24 +402,36 @@ function App() {
   const playbackPane = (
     <div>
       <section>
-        <h2>Saved Walkthroughs</h2>
-        {myWalkthroughs.length ? (
-          myWalkthroughs.map((walkthrough) => (
-            <div key={walkthrough.id} className="walkthrough-card">
+        <h2>Relevant Walkthroughs</h2>
+        {relevantWalkthroughs.length ? (
+          relevantWalkthroughs.map((walkthrough) => (
+            <div key={`relevant-${walkthrough.id}`} className="walkthrough-card">
               <strong>{walkthrough.title}</strong>
               <div>{walkthrough.origin}{walkthrough.pathPattern ? ` ${walkthrough.pathPattern}` : ""}</div>
               <div>{walkthrough.steps.length} steps</div>
-              <button onClick={() => handleStartPlayback(walkthrough)}>Start Playback</button>
+              <button className="secondary" onClick={() => handleStartPlayback(walkthrough)}>Start Playback</button>
+            </div>
+          ))
+        ) : (
+          <div>No walkthroughs found for this page.</div>
+        )}
+      </section>
+      <section>
+        <h2>All Saved Walkthroughs</h2>
+        {myWalkthroughs.length ? (
+          myWalkthroughs.map((walkthrough) => (
+            <div key={`all-${walkthrough.id}`} className="walkthrough-card">
+              <strong>{walkthrough.title}</strong>
+              <div>{walkthrough.origin}{walkthrough.pathPattern ? ` ${walkthrough.pathPattern}` : ""}</div>
+              <div>{walkthrough.steps.length} steps</div>
+              <button className="secondary" onClick={() => handleStartPlayback(walkthrough)}>Start Playback</button>
             </div>
           ))
         ) : (
           <div>No saved walkthroughs yet.</div>
         )}
       </section>
-      <div className="field" style={{ marginTop: "12px" }}>
-        <label>Playback diagnostics</label>
-        <div>{lastRelevantFetchInfo || "No lookup performed yet."}</div>
-      </div>
+      {/* Playback diagnostics removed from UI (internal only) */}
     </div>
   );
 
@@ -434,8 +446,10 @@ function App() {
         <label>Password</label>
         <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
-      <button className="primary" onClick={handleAuth}>{isSignup ? "Create Account" : "Sign In"}</button>
-      <button className="secondary" onClick={() => setIsSignup((prev) => !prev)}>{isSignup ? "Have an account? Log in" : "Need an account? Sign up"}</button>
+      <div className="auth-actions">
+        <button className="primary" onClick={handleAuth}>{isSignup ? "Create Account" : "Sign In"}</button>
+        <button className="secondary" onClick={() => setIsSignup((prev) => !prev)}>{isSignup ? "Have an account? Log in" : "Need an account? Sign up"}</button>
+      </div>
     </div>
   );
 
@@ -453,8 +467,7 @@ function App() {
       {isAuthenticated ? (
         <div>
           <div className="page-context">{origin}{path ? ` ${path}` : ""}</div>
-          <div className="page-context">Content script: {contentScriptConnected === null ? "Unknown" : contentScriptConnected ? "Connected" : "Not connected"}</div>
-          <div className="page-context">Playback lookup: {lastRelevantFetchInfo || "pending..."}</div>
+          {/* internal diagnostics hidden from extension UI */}
           <div className="tabs">
             <button className={`tab-button ${view === "author" ? "active" : ""}`} onClick={() => setView("author")}>Author</button>
             <button className={`tab-button ${view === "playback" ? "active" : ""}`} onClick={() => setView("playback")}>Playback</button>

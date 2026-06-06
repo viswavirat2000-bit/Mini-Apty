@@ -5,6 +5,11 @@ import { AuthenticatedRequest } from "../middleware/authMiddleware";
 
 const validTrigger = new Set(["click", "next", "manual"]);
 
+/**
+ * Normalize incoming step payloads from the API into the service model.
+ * @param input Raw request body steps data.
+ * @returns Validated walkthrough steps.
+ */
 function normalizeSteps(input: any): walkthroughService.WalkthroughStep[] {
   if (!Array.isArray(input)) throw new Error("steps must be an array");
   return input.map((step) => {
@@ -29,6 +34,9 @@ function normalizeSteps(input: any): walkthroughService.WalkthroughStep[] {
   });
 }
 
+/**
+ * Create a new walkthrough for the authenticated user.
+ */
 export async function createWalkthrough(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const { title, origin, pathPattern, steps } = req.body;
@@ -44,6 +52,9 @@ export async function createWalkthrough(req: AuthenticatedRequest, res: Response
   }
 }
 
+/**
+ * List walkthroughs owned by the authenticated user.
+ */
 export async function listOwnWalkthroughs(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     if (!req.user) return res.status(401).json({ error: "authorization required" });
@@ -54,6 +65,9 @@ export async function listOwnWalkthroughs(req: AuthenticatedRequest, res: Respon
   }
 }
 
+/**
+ * Return walkthroughs relevant to a given origin/path pair.
+ */
 export async function listRelevantWalkthroughs(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const { origin, path } = req.query;
@@ -67,6 +81,9 @@ export async function listRelevantWalkthroughs(req: AuthenticatedRequest, res: R
   }
 }
 
+/**
+ * Return a single walkthrough by id.
+ */
 export async function getWalkthrough(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     const id = Number(req.params.id);
@@ -79,6 +96,9 @@ export async function getWalkthrough(req: AuthenticatedRequest, res: Response, n
   }
 }
 
+/**
+ * Update an existing walkthrough belonging to the authenticated user.
+ */
 export async function updateWalkthrough(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     if (!req.user) return res.status(401).json({ error: "authorization required" });
@@ -100,6 +120,9 @@ export async function updateWalkthrough(req: AuthenticatedRequest, res: Response
   }
 }
 
+/**
+ * Delete a walkthrough owned by the authenticated user.
+ */
 export async function deleteWalkthrough(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     if (!req.user) return res.status(401).json({ error: "authorization required" });
@@ -113,6 +136,9 @@ export async function deleteWalkthrough(req: AuthenticatedRequest, res: Response
   }
 }
 
+/**
+ * Retrieve playback progress for a walkthrough for the current user.
+ */
 export async function getProgress(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     if (!req.user) return res.status(401).json({ error: "authorization required" });
@@ -125,6 +151,9 @@ export async function getProgress(req: AuthenticatedRequest, res: Response, next
   }
 }
 
+/**
+ * Save playback progress for a walkthrough for the current user.
+ */
 export async function saveProgress(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
     if (!req.user) return res.status(401).json({ error: "authorization required" });

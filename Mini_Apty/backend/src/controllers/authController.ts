@@ -4,6 +4,9 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "dev-secret";
 
+/**
+ * Handle user signup requests and return a JWT for the created account.
+ */
 export async function signup(req: Request, res: Response, next: NextFunction) {
   try {
     const { email, password } = req.body;
@@ -18,6 +21,9 @@ export async function signup(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+/**
+ * Handle user login requests and return a JWT for valid credentials.
+ */
 export async function login(req: Request, res: Response, next: NextFunction) {
   try {
     const { email, password } = req.body;

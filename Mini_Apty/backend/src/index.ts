@@ -2,6 +2,9 @@ import app from "./app";
 import fs from "fs";
 import path from "path";
 
+/**
+ * Load environment variables from a root .env file when present.
+ */
 function loadDotEnv() {
   const envPath = path.resolve(__dirname, "../..", ".env");
   if (!fs.existsSync(envPath)) return;

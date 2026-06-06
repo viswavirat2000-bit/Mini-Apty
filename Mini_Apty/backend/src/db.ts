@@ -6,11 +6,19 @@ const DATABASE_URL = process.env.DATABASE_URL || `sqlite:${path.resolve(__dirnam
 
 let dbInstance: sqlite3.Database | null = null;
 
+/**
+ * Resolve the configured database path from DATABASE_URL.
+ * @returns Filesystem path to the SQLite database.
+ */
 function getDbPath(): string {
   if (DATABASE_URL.startsWith("sqlite:")) return DATABASE_URL.replace("sqlite:", "");
   return DATABASE_URL;
 }
 
+/**
+ * Open or return the cached SQLite database instance.
+ * @returns Open sqlite3.Database instance.
+ */
 export function getDb(): Promise<sqlite3.Database> {
   if (dbInstance) return Promise.resolve(dbInstance);
   return new Promise((resolve, reject) => {
@@ -30,6 +38,9 @@ export function getDb(): Promise<sqlite3.Database> {
   });
 }
 
+/**
+ * Execute a run statement against the database.
+ */
 function run(db: sqlite3.Database, sql: string, params: any[] = []): Promise<sqlite3.RunResult> {
   return new Promise((resolve, reject) => db.run(sql, params, function (err) {
     if (err) reject(err);
@@ -37,6 +48,9 @@ function run(db: sqlite3.Database, sql: string, params: any[] = []): Promise<sql
   }));
 }
 
+/**
+ * Execute a single-row query against the database.
+ */
 function get<T = any>(db: sqlite3.Database, sql: string, params: any[] = []): Promise<T | undefined> {
   return new Promise((resolve, reject) => db.get(sql, params, (err, row) => {
     if (err) reject(err);
@@ -44,6 +58,9 @@ function get<T = any>(db: sqlite3.Database, sql: string, params: any[] = []): Pr
   }));
 }
 
+/**
+ * Execute a query that returns multiple rows.
+ */
 function all<T = any>(db: sqlite3.Database, sql: string, params: any[] = []): Promise<T[]> {
   return new Promise((resolve, reject) => db.all(sql, params, (err, rows) => {
     if (err) reject(err);
@@ -51,6 +68,9 @@ function all<T = any>(db: sqlite3.Database, sql: string, params: any[] = []): Pr
   }));
 }
 
+/**
+ * Run database migrations to ensure required tables exist.
+ */
 export async function migrate() {
   const db = await getDb();
   await run(db, `
@@ -88,16 +108,25 @@ export async function migrate() {
   `);
 }
 
+/**
+ * Execute a single-row SQL query using the shared database connection.
+ */
 export async function query<T = any>(sql: string, params: any[] = []): Promise<T | undefined> {
   const db = await getDb();
   return get<T>(db, sql, params);
 }
 
+/**
+ * Execute a SQL query and return all rows.
+ */
 export async function queryAll<T = any>(sql: string, params: any[] = []): Promise<T[]> {
   const db = await getDb();
   return all<T>(db, sql, params);
 }
 
+/**
+ * Execute a SQL statement that modifies the database.
+ */
 export async function execute(sql: string, params: any[] = []): Promise<sqlite3.RunResult> {
   const db = await getDb();
   return run(db, sql, params);

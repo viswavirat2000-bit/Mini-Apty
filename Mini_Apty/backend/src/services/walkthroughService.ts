@@ -39,6 +39,9 @@ interface WalkthroughRow {
 const serializeSteps = (steps: WalkthroughStep[]) => JSON.stringify(steps);
 const parseSteps = (data: string) => JSON.parse(data) as WalkthroughStep[];
 
+/**
+ * Create and persist a new walkthrough for a user.
+ */
 export async function createWalkthrough(
   ownerId: number,
   title: string,
@@ -65,6 +68,11 @@ export async function createWalkthrough(
   };
 }
 
+/**
+ * Load a walkthrough by its id.
+ * @param id Walkthrough identifier.
+ * @returns Walkthrough record or null if not found.
+ */
 export async function getWalkthroughById(id: number): Promise<Walkthrough | null> {
   const row = await query<WalkthroughRow>(`SELECT * FROM walkthroughs WHERE id = ?`, [id]);
   if (!row) return null;
@@ -80,6 +88,11 @@ export async function getWalkthroughById(id: number): Promise<Walkthrough | null
   };
 }
 
+/**
+ * List all walkthroughs owned by a specific user.
+ * @param ownerId User id.
+ * @returns Array of walkthroughs.
+ */
 export async function listWalkthroughsByOwner(ownerId: number): Promise<Walkthrough[]> {
   const rows = await queryAll<WalkthroughRow>(`SELECT * FROM walkthroughs WHERE ownerId = ? ORDER BY updatedAt DESC`, [ownerId]);
   return rows.map((row) => ({
@@ -94,6 +107,12 @@ export async function listWalkthroughsByOwner(ownerId: number): Promise<Walkthro
   }));
 }
 
+/**
+ * Find walkthroughs matching an origin and path pattern.
+ * @param origin Page origin.
+ * @param path Page path.
+ * @returns Matching walkthroughs.
+ */
 export async function findRelevantWalkthroughs(origin: string, path: string): Promise<Walkthrough[]> {
   const rows = await queryAll<WalkthroughRow>(
     `SELECT * FROM walkthroughs WHERE origin = ? AND (? LIKE pathPattern) ORDER BY updatedAt DESC`,
@@ -111,6 +130,9 @@ export async function findRelevantWalkthroughs(origin: string, path: string): Pr
   }));
 }
 
+/**
+ * Update a walkthrough metadata or steps for the given owner.
+ */
 export async function updateWalkthrough(
   id: number,
   ownerId: number,
@@ -139,6 +161,12 @@ export async function updateWalkthrough(
   };
 }
 
+/**
+ * Delete a walkthrough owned by the user.
+ * @param id Walkthrough identifier.
+ * @param ownerId Owner user id.
+ * @returns True if deletion succeeded.
+ */
 export async function deleteWalkthrough(id: number, ownerId: number): Promise<boolean> {
   const result = await execute(`DELETE FROM walkthroughs WHERE id = ? AND ownerId = ?`, [id, ownerId]);
   return result.changes > 0;

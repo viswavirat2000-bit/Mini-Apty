@@ -1,10 +1,18 @@
 import { Request, Response, NextFunction } from "express";
 
+/**
+ * Detect sqlite constraint errors from thrown error messages.
+ * @param err Error object from sqlite operations.
+ * @returns True when the error appears to be a unique constraint or DB constraint failure.
+ */
 function isSqliteConstraintError(err: any) {
   const msg = String(err?.message || "").toLowerCase();
   return msg.includes("unique constraint") || msg.includes("sqlite_3") || msg.includes("constraint failed");
 }
 
+/**
+ * Express error middleware that normalizes API error responses.
+ */
 export default function errorNormalizer(err: any, req: Request, res: Response, next: NextFunction) {
   // If response already sent, forward
   if (res.headersSent) return next(err);

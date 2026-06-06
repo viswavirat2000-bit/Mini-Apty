@@ -33,6 +33,9 @@ function App() {
 
   const isAuthenticated = Boolean(token);
 
+  /**
+   * Load any pending captured steps from storage into popup state.
+   */
   const loadPendingSteps = async () => {
     const pendingSteps = await getPendingSteps();
     if (!pendingSteps.length) return;
@@ -117,6 +120,12 @@ function App() {
     };
   }, []);
 
+  /**
+   * Refresh both the user's walkthroughs and relevant walkthroughs for the page.
+   * @param tokenValue Auth token to use for requests.
+   * @param currentOrigin Optional override for the origin.
+   * @param currentPath Optional override for the path.
+   */
   const refreshWalkthroughs = async (tokenValue: string | null, currentOrigin?: string, currentPath?: string) => {
     const originToUse = currentOrigin ?? origin;
     const pathToUse = currentPath ?? path;
@@ -141,6 +150,12 @@ function App() {
     }
   };
 
+  /**
+   * Send a message to a content script in a tab and await the response.
+   * @param tabId Tab id to send to.
+   * @param message Message payload.
+   * @returns Response from the content script.
+   */
   const sendTabMessage = async (tabId: number, message: any) => {
     return new Promise<any>((resolve, reject) => {
       chrome.tabs.sendMessage(tabId, message, (response) => {
@@ -153,6 +168,10 @@ function App() {
     });
   };
 
+  /**
+   * Inject the extension content script into the target tab using Chrome scripting APIs.
+   * @param tabId Tab id to inject into.
+   */
   const injectContentScript = async (tabId: number) => {
     return new Promise<void>((resolve, reject) => {
       chrome.scripting.executeScript(
@@ -168,6 +187,11 @@ function App() {
     });
   };
 
+  /**
+   * Ensure the content script is loaded and responsive in the active tab.
+   * @param tabId Tab id to check.
+   * @returns True when the content script is available.
+   */
   const ensureContentScript = async (tabId: number) => {
     try {
       await sendTabMessage(tabId, { type: "PING" });
@@ -195,6 +219,9 @@ function App() {
     }
   };
 
+  /**
+   * Perform signup or login depending on the current auth mode.
+   */
   const handleAuth = async () => {
     setError(null);
     try {
@@ -208,6 +235,9 @@ function App() {
     }
   };
 
+  /**
+   * Log the user out by clearing stored credentials and resetting state.
+   */
   const doLogout = async () => {
     await clearToken();
     setTokenState(null);
@@ -216,6 +246,9 @@ function App() {
     setStatus("Signed out.");
   };
 
+  /**
+   * Send a command to the content script to start capture mode.
+   */
   const sendCaptureCommand = async () => {
     setError(null);
     setStatus("Waiting for page capture...");
@@ -234,6 +267,9 @@ function App() {
     });
   };
 
+  /**
+   * Send a command to the content script to stop capture mode.
+   */
   const stopCaptureCommand = async () => {
     setError(null);
     const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
@@ -249,6 +285,9 @@ function App() {
     });
   };
 
+  /**
+   * Validate and save the current walkthrough draft to the backend.
+   */
   const handleSaveDraft = async () => {
     if (!draftTitle.trim()) return setError("Enter a walkthrough title.");
     if (!origin || !path) return setError("Page context missing.");
@@ -269,6 +308,9 @@ function App() {
     }
   };
 
+  /**
+   * Reset the authoring state to start a new walkthrough draft.
+   */
   const handleNewWalkthrough = async () => {
     setSteps([]);
     setDraftTitle("");
@@ -281,6 +323,10 @@ function App() {
     setStatus("Ready for a new walkthrough.");
   };
 
+  /**
+   * Delete a walkthrough owned by the current user.
+   * @param id Walkthrough identifier.
+   */
   const handleDeleteWalkthrough = async (id: number) => {
     if (!window.confirm("Delete this walkthrough?")) return;
     try {
@@ -293,6 +339,10 @@ function App() {
     }
   };
 
+  /**
+   * Trigger playback of a selected walkthrough on the active tab.
+   * @param walkthrough Walkthrough to play.
+   */
   const handleStartPlayback = async (walkthrough: Walkthrough) => {
     const tabs = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     const tab = tabs[0];
@@ -486,15 +536,24 @@ class ErrorBoundary extends React.Component<React.PropsWithChildren<{}>, { hasEr
     this.state = { hasError: false, error: null, info: null };
   }
 
+  /**
+   * Derive error boundary state from a rendering error.
+   */
   static getDerivedStateFromError(error: Error) {
     return { hasError: true, error };
   }
 
+  /**
+   * Log error details and record them in boundary state.
+   */
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error("Popup ErrorBoundary caught:", error, info);
     this.setState({ error, info });
   }
 
+  /**
+   * Reload the popup UI when a fatal React error has occurred.
+   */
   handleReload = () => {
     try {
       // attempt graceful reload of the popup

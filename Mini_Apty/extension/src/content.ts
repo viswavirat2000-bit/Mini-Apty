@@ -18,6 +18,11 @@ let captureCount = 0;
 
 const CAPTURE_TEXT_INPUT_TYPES = new Set(["text", "search", "url", "tel", "email", "password", "number", "date", "datetime-local", "month", "time", "week"]);
 
+/**
+ * Build a stable CSS selector from an element using id or tag/class ancestry.
+ * @param element Element to generate a selector for.
+ * @returns Best-effort selector string.
+ */
 function buildSelector(element: HTMLElement): string {
   if (element.id) return `#${CSS.escape(element.id)}`;
   const parts: string[] = [];
@@ -34,6 +39,11 @@ function buildSelector(element: HTMLElement): string {
   return parts.join(">");
 }
 
+/**
+ * Collect metadata for a captured element into a target object.
+ * @param target Element selected for the walkthrough step.
+ * @returns Target descriptor used for later playback resolution.
+ */
 function collectTarget(target: Element): WalkthroughStepTarget {
   const attributes: Record<string, string> = {};
   for (const attr of Array.from(target.attributes || [])) {
@@ -131,12 +141,18 @@ function collectTarget(target: Element): WalkthroughStepTarget {
   };
 }
 
+/**
+ * Remove the visual capture highlight state from any element.
+ */
 function clearCaptureHighlights() {
   document.querySelectorAll(`.${CAPTURE_CLASS}`).forEach((node) => {
     node.classList.remove(CAPTURE_CLASS);
   });
 }
 
+/**
+ * Create the floating capture overlay UI on the page.
+ */
 function createCaptureOverlay() {
   if (currentCaptureOverlay) return;
   const overlay = document.createElement("div");
@@ -160,12 +176,18 @@ function createCaptureOverlay() {
   currentCaptureOverlay = overlay;
 }
 
+/**
+ * Remove the capture overlay UI from the page.
+ */
 function removeCaptureOverlay() {
   if (!currentCaptureOverlay) return;
   currentCaptureOverlay.remove();
   currentCaptureOverlay = null;
 }
 
+/**
+ * Update the capture overlay text with the current capture count.
+ */
 function updateCaptureOverlayMessage() {
   if (!currentCaptureOverlay) return;
   const message = currentCaptureOverlay.querySelector(".mini-apty-capture-message") as HTMLElement | null;
@@ -173,6 +195,11 @@ function updateCaptureOverlayMessage() {
   message.textContent = `Mini Apty capture active — ${captureCount} step${captureCount === 1 ? "" : "s"} captured. Click elements to add more.`;
 }
 
+/**
+ * Persist a captured step into Chrome storage and notify the popup.
+ * @param stepTarget Captured target metadata.
+ * @param trigger Capture trigger type.
+ */
 function persistPendingStep(stepTarget: WalkthroughStepTarget, trigger: "click" | "manual") {
   const key = "miniAptyPendingSteps";
   chrome.storage.local.get(key, (result) => {
@@ -184,12 +211,22 @@ function persistPendingStep(stepTarget: WalkthroughStepTarget, trigger: "click" 
   });
 }
 
+/**
+ * Normalize a click target to a capturable element.
+ * @param target Event target to examine.
+ * @returns Element to capture or null.
+ */
 function getCaptureElement(target: EventTarget | null): Element | null {
   if (!(target instanceof Element)) return null;
   const interactive = target.closest("button, a, input, select, textarea");
   return interactive || target;
 }
 
+/**
+ * Determine whether an element should capture its current value.
+ * @param target Event target to inspect.
+ * @returns True when the element can carry value input.
+ */
 function isValueCaptureElement(target: EventTarget | null): target is HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement {
   if (target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement) {
     return true;
@@ -200,6 +237,9 @@ function isValueCaptureElement(target: EventTarget | null): target is HTMLInputE
   return false;
 }
 
+/**
+ * Enable capture mode and attach page listeners for authoring.
+ */
 function enableCapture() {
   if (captureEnabled) return;
   captureEnabled = true;
@@ -214,6 +254,9 @@ function enableCapture() {
   updateCaptureOverlayMessage();
 }
 
+/**
+ * Disable capture mode and clean up capture UI state.
+ */
 function disableCapture() {
   captureEnabled = false;
   chrome.storage.local.set({ miniAptyCaptureActive: false });
@@ -226,6 +269,10 @@ function disableCapture() {
   removeCaptureOverlay();
 }
 
+/**
+ * Handle click events during capture mode and record the selected element.
+ * @param event Mouse event for the click.
+ */
 function handleCaptureClick(event: MouseEvent) {
   const target = getCaptureElement(event.target);
   if (!target) return;
@@ -246,6 +293,10 @@ function handleCaptureClick(event: MouseEvent) {
   updateCaptureOverlayMessage();
 }
 
+/**
+ * Handle change events for input fields while capture mode is active.
+ * @param event Change event from the page.
+ */
 function handleCaptureFieldChange(event: Event) {
   const target = event.target;
   if (!target || !(target instanceof Node) || currentCaptureOverlay?.contains(target)) return;
@@ -257,6 +308,10 @@ function handleCaptureFieldChange(event: Event) {
   updateCaptureOverlayMessage();
 }
 
+/**
+ * Handle Enter key presses during capture mode to record form field input.
+ * @param event Keyboard event from the page.
+ */
 function handleCaptureKeyDown(event: KeyboardEvent) {
   if (event.key !== "Enter") return;
   const target = event.target;
@@ -267,6 +322,10 @@ function handleCaptureKeyDown(event: KeyboardEvent) {
   chrome.runtime.sendMessage({ type: "CAPTURE_RESULT", target: stepTarget, trigger: "manual", skipStorage: true });
 }
 
+/**
+ * Handle form submit events during capture mode and record the submit target.
+ * @param event Submit event from the page.
+ */
 function handleCaptureSubmit(event: Event) {
   const submitEvent = event as SubmitEvent;
   const submitter = submitEvent.submitter instanceof Element ? submitEvent.submitter : null;
@@ -280,6 +339,12 @@ function handleCaptureSubmit(event: Event) {
   updateCaptureOverlayMessage();
 }
 
+/**
+ * Resolve a saved walkthrough target back to a live page element.
+ * Uses id, selector, accessibility attributes, anchor text and path hints.
+ * @param target Saved target metadata.
+ * @returns Matching HTMLElement or null when resolution fails.
+ */
 function resolveTarget(target: WalkthroughStepTarget): HTMLElement | null {
   if (target.id) {
     const el = document.getElementById(target.id);
@@ -379,6 +444,11 @@ function resolveTarget(target: WalkthroughStepTarget): HTMLElement | null {
   return null;
 }
 
+/**
+ * Create the playback balloon UI element shown during walkthrough playback.
+ * @param message HTML content to render inside the balloon.
+ * @returns Created balloon element.
+ */
 function createBalloon(message: string): HTMLElement {
   const balloon = document.createElement("div");
   balloon.className = "mini-apty-balloon";
@@ -398,6 +468,9 @@ function createBalloon(message: string): HTMLElement {
   return balloon;
 }
 
+/**
+ * Render the current playback step balloon and target highlight.
+ */
 function renderPlayback() {
   if (!playbackState) return;
   const { walkthrough, stepIndex } = playbackState;
@@ -481,6 +554,9 @@ function renderPlayback() {
   balloon.addEventListener("click", handleBalloonClick);
 }
 
+/**
+ * Remove any existing playback UI and highlight elements.
+ */
 function removePlaybackUI() {
   playbackState?.balloon?.remove();
   playbackState?.highlight?.remove();
@@ -490,11 +566,19 @@ function removePlaybackUI() {
   }
 }
 
+/**
+ * Load the auth token from content script storage context.
+ * @returns Stored bearer token or null if none is found.
+ */
 async function getTokenFromStorage(): Promise<string | null> {
   const result = await chrome.storage.local.get("miniAptyAuthToken");
   return result?.miniAptyAuthToken || null;
 }
 
+/**
+ * Persist current playback progress to the backend if authenticated.
+ * @param stepIndex Index of the current playback step.
+ */
 async function saveProgress(stepIndex: number) {
   if (!playbackState) return;
   try {
@@ -513,6 +597,10 @@ async function saveProgress(stepIndex: number) {
   }
 }
 
+/**
+ * Handle user interactions inside the playback balloon.
+ * @param event Mouse event from the balloon controls.
+ */
 function handleBalloonClick(event: MouseEvent) {
   const element = event.target as HTMLElement | null;
   const button = element?.closest("[data-action]") as HTMLElement | null;
@@ -538,12 +626,18 @@ function handleBalloonClick(event: MouseEvent) {
   }
 }
 
+/**
+ * Stop playback and clear stored playback state.
+ */
 function stopPlayback() {
   removePlaybackUI();
   playbackState = null;
   chrome.storage.local.set({ miniAptyPlaybackState: null });
 }
 
+/**
+ * Persist the current playback state to Chrome storage.
+ */
 function savePlaybackState() {
   if (!playbackState) {
     chrome.storage.local.set({ miniAptyPlaybackState: null });
@@ -558,6 +652,12 @@ function savePlaybackState() {
   });
 }
 
+/**
+ * Handle messages received from the extension popup or background script.
+ * @param message Message payload.
+ * @param sender Sender metadata.
+ * @param sendResponse Response callback.
+ */
 async function handleMessage(message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) {
   if (message?.type === "START_CAPTURE") {
     enableCapture();
@@ -593,6 +693,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return true;
 });
 
+/**
+ * Handle SPA route changes by refreshing capture/playback UI state.
+ */
 function onSpaRouteChange() {
   console.log("Mini Apty SPA route change detected", window.location.href);
   if (captureEnabled) {
@@ -605,6 +708,9 @@ function onSpaRouteChange() {
   }
 }
 
+/**
+ * Patch SPA history methods and popstate to detect client-side navigation.
+ */
 function watchSpaNavigation() {
   const originalPushState = history.pushState;
   const originalReplaceState = history.replaceState;

@@ -47,6 +47,9 @@ app.use("/api/walkthroughs", walkthroughRouter);
 // Swagger UI for manual testing
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(openapiSpec));
 
+/**
+ * Health check endpoint for operational status.
+ */
 app.get("/health", (req, res) => res.json({ status: "ok" }));
 
 // error normalizer middleware

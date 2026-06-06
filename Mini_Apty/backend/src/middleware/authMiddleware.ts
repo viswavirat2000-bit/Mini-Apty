@@ -7,6 +7,9 @@ export interface AuthenticatedRequest extends Request {
   user?: { id: number; email: string };
 }
 
+/**
+ * Express middleware to require a valid bearer token and attach the user to the request.
+ */
 export function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {

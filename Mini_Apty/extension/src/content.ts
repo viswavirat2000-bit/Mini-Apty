@@ -138,6 +138,7 @@ function collectTarget(target: Element): WalkthroughStepTarget {
     anchorText,
     contextSelector,
     pathSignature,
+    pageUrl: window.location.href,
   };
 }
 
@@ -445,6 +446,50 @@ function resolveTarget(target: WalkthroughStepTarget): HTMLElement | null {
 }
 
 /**
+ * Normalize a URL string into a fully-qualified absolute URL.
+ * @param url Candidate URL to normalize.
+ * @returns Absolute URL string or undefined if invalid.
+ */
+function normalizeUrl(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    return new URL(url, window.location.href).href;
+  } catch {
+    return url;
+  }
+}
+
+/**
+ * Convert a URL into a stable origin+path+search key for comparison.
+ * @param url Candidate URL to normalize and compare.
+ * @returns Comparison key string or undefined if invalid.
+ */
+function getUrlPathKey(url: string | undefined): string | undefined {
+  const normalized = normalizeUrl(url);
+  if (!normalized) return undefined;
+  try {
+    const parsed = new URL(normalized);
+    return `${parsed.origin}${parsed.pathname}${parsed.search}`;
+  } catch {
+    return normalized;
+  }
+}
+
+/**
+ * Determine whether two URLs refer to the same logical page.
+ * Ignores hash/fragment differences when comparing.
+ * @param urlA First URL to compare.
+ * @param urlB Second URL to compare.
+ * @returns True when the two URLs match by origin/path/search.
+ */
+function isSameUrl(urlA: string | undefined, urlB: string): boolean {
+  const keyA = getUrlPathKey(urlA);
+  const keyB = getUrlPathKey(urlB);
+  if (!keyA || !keyB) return false;
+  return keyA === keyB;
+}
+
+/**
  * Create the playback balloon UI element shown during walkthrough playback.
  * @param message HTML content to render inside the balloon.
  * @returns Created balloon element.
@@ -475,6 +520,10 @@ function renderPlayback() {
   if (!playbackState) return;
   const { walkthrough, stepIndex } = playbackState;
   const step = walkthrough.steps[stepIndex];
+  if (step.target.pageUrl && !isSameUrl(step.target.pageUrl, window.location.href)) {
+    window.location.assign(step.target.pageUrl);
+    return;
+  }
   removePlaybackUI();
   const target = resolveTarget(step.target);
   if (!target) {
@@ -539,6 +588,31 @@ function renderPlayback() {
   balloon.style.top = `${window.scrollY + rect.bottom + 12}px`;
   balloon.style.left = `${window.scrollX + rect.left}px`;
   playbackState.balloon = balloon;
+  // Attach direct handlers to balloon buttons to ensure clicks are handled
+  const prevBtn = balloon.querySelector('[data-action="prev"]') as HTMLElement | null;
+  const nextBtn = balloon.querySelector('[data-action="next"]') as HTMLElement | null;
+  const stopBtn = balloon.querySelector('[data-action="stop"]') as HTMLElement | null;
+  if (prevBtn) prevBtn.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    if (!playbackState) return;
+    goToPreviousStep();
+  });
+  if (nextBtn) nextBtn.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    if (!playbackState) return;
+    if (playbackState.stepIndex + 1 < playbackState.walkthrough.steps.length) {
+      playbackState.stepIndex += 1;
+      savePlaybackState();
+      renderPlayback();
+      saveProgress(playbackState.stepIndex);
+    } else {
+      stopPlayback();
+    }
+  });
+  if (stopBtn) stopBtn.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    stopPlayback();
+  });
   const highlight = document.createElement("div");
   highlight.className = "mini-apty-playback-highlight";
   highlight.style.position = "absolute";
@@ -602,16 +676,13 @@ async function saveProgress(stepIndex: number) {
  * @param event Mouse event from the balloon controls.
  */
 function handleBalloonClick(event: MouseEvent) {
-  const element = event.target as HTMLElement | null;
-  const button = element?.closest("[data-action]") as HTMLElement | null;
+  const targetNode = event.target as Node | null;
+  const button = targetNode instanceof Element ? (targetNode.closest("[data-action]") as HTMLElement | null) : null;
   const action = button?.dataset?.action;
   if (!action || !playbackState) return;
   event.stopPropagation();
   if (action === "prev") {
-    playbackState.stepIndex = Math.max(0, playbackState.stepIndex - 1);
-    savePlaybackState();
-    renderPlayback();
-    saveProgress(playbackState.stepIndex);
+    goToPreviousStep();
   } else if (action === "next") {
     if (playbackState.stepIndex + 1 < playbackState.walkthrough.steps.length) {
       playbackState.stepIndex += 1;
@@ -650,6 +721,49 @@ function savePlaybackState() {
       lastExecutedStepIndex: playbackState.lastExecutedStepIndex,
     },
   });
+}
+
+/**
+ * Move playback to the previous step, restoring page context and step values.
+ * If the previous step belongs to another page, navigate there first.
+ */
+function goToPreviousStep() {
+  if (!playbackState) return;
+  clearStepValue(playbackState.stepIndex);
+  const newIndex = Math.max(0, playbackState.stepIndex - 1);
+  playbackState.stepIndex = newIndex;
+  playbackState.lastExecutedStepIndex = undefined;
+  savePlaybackState();
+  const previousStep = playbackState.walkthrough.steps[newIndex];
+  if (previousStep?.target.pageUrl && !isSameUrl(previousStep.target.pageUrl, window.location.href)) {
+    window.location.assign(previousStep.target.pageUrl);
+    return;
+  }
+  renderPlayback();
+  saveProgress(playbackState.stepIndex);
+}
+
+/**
+ * Clear any value that was applied by a step at the given index.
+ * Used when stepping backwards to undo inputs like search terms.
+ */
+function clearStepValue(index: number) {
+  if (!playbackState) return;
+  const step = playbackState.walkthrough.steps[index];
+  if (!step || !step.target) return;
+  // Only clear if the step had an assigned value during playback
+  if (!step.target.value) return;
+  const el = resolveTarget(step.target);
+  if (!el) return;
+  try {
+    if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) {
+      el.value = "";
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+  } catch (err) {
+    console.warn("Could not clear step value", err);
+  }
 }
 
 /**
@@ -699,7 +813,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 function onSpaRouteChange() {
   console.log("Mini Apty SPA route change detected", window.location.href);
   if (captureEnabled) {
-    if (!currentCaptureOverlay) createCaptureOverlay();
+    // Check if overlay is still in DOM; recreate if it was removed by page rerender
+    if (!currentCaptureOverlay || !document.body.contains(currentCaptureOverlay)) {
+      currentCaptureOverlay = null;
+      createCaptureOverlay();
+    }
     updateCaptureOverlayMessage();
   }
   if (playbackState) {
@@ -734,7 +852,13 @@ function watchSpaNavigation() {
 chrome.storage.local.get("miniAptyCaptureActive", (result) => {
   if (result.miniAptyCaptureActive === true) {
     console.log("Mini Apty restoring capture mode on new page");
-    enableCapture();
+    // Also restore the pending steps count so the overlay shows the correct count
+    chrome.storage.local.get("miniAptyPendingSteps", (stepsResult) => {
+      enableCapture();
+      const pending = Array.isArray(stepsResult.miniAptyPendingSteps) ? stepsResult.miniAptyPendingSteps : [];
+      captureCount = pending.length;
+      updateCaptureOverlayMessage();
+    });
   }
 });
 

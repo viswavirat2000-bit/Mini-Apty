@@ -5,6 +5,7 @@ export interface WalkthroughStepTarget {
   value?: string;
   role?: string;
   attributes?: Record<string, string>;
+  pageUrl?: string;
   // Accessibility / semantic hints captured during authoring
   ariaLabel?: string;
   name?: string;

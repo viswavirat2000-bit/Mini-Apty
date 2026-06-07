@@ -29,6 +29,7 @@ function normalizeSteps(input: any): walkthroughService.WalkthroughStep[] {
         value: typeof target.value === "string" ? target.value : undefined,
         role: typeof target.role === "string" ? target.role : undefined,
         attributes: typeof target.attributes === "object" && target.attributes ? target.attributes : undefined,
+        pageUrl: typeof target.pageUrl === "string" ? target.pageUrl : undefined,
       },
     };
   });

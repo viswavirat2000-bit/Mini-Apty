@@ -8,6 +8,7 @@ export interface WalkthroughStep {
     value?: string;
     role?: string;
     attributes?: Record<string, string>;
+    pageUrl?: string;
   };
   title: string;
   description: string;

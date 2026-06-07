@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { AuthResponse, Walkthrough, WalkthroughStep, WalkthroughStepTarget } from "./types";
 import { clearToken, getToken, setToken, getCachedWalkthroughs, getPendingSteps, setPendingSteps, clearPendingSteps, getDraftTitle, setDraftTitle as persistDraftTitle, getDraftPathPattern, setDraftPathPattern as persistDraftPathPattern } from "./storage";
-import { createWalkthrough, deleteWalkthrough, findRelevantWalkthroughs, findRelevantWalkthroughsWithToken, getWalkthrough, getProgress, listMyWalkthroughs, listMyWalkthroughsWithToken, login, signup } from "./api";
+import { createWalkthrough, deleteWalkthrough, getWalkthrough, getProgress, listMyWalkthroughs, listMyWalkthroughsWithToken, login, signup } from "./api";
 
 const initialStep: WalkthroughStep = {
   title: "",
@@ -23,13 +23,11 @@ function App() {
   const [steps, setSteps] = useState<WalkthroughStep[]>([]);
   const [draftTitle, setDraftTitle] = useState("");
   const [draftPathPattern, setDraftPathPattern] = useState("%/*");
-  const [relevantWalkthroughs, setRelevantWalkthroughs] = useState<Walkthrough[]>([]);
   const [myWalkthroughs, setMyWalkthroughs] = useState<Walkthrough[]>([]);
   const [status, setStatus] = useState("Ready");
   const [view, setView] = useState<"author" | "playback">("author");
   const [contentScriptConnected, setContentScriptConnected] = useState<boolean | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
-  const [lastRelevantFetchInfo, setLastRelevantFetchInfo] = useState<string>("");
 
   const isAuthenticated = Boolean(token);
 
@@ -87,7 +85,7 @@ function App() {
 
   useEffect(() => {
     if (!origin || !path) return;
-    refreshWalkthroughs(token, origin, path).catch(() => null);
+    refreshWalkthroughs(token).catch(() => null);
   }, [token, origin, path]);
 
   useEffect(() => {
@@ -126,27 +124,15 @@ function App() {
    * @param currentOrigin Optional override for the origin.
    * @param currentPath Optional override for the path.
    */
-  const refreshWalkthroughs = async (tokenValue: string | null, currentOrigin?: string, currentPath?: string) => {
-    const originToUse = currentOrigin ?? origin;
-    const pathToUse = currentPath ?? path;
+  const refreshWalkthroughs = async (tokenValue: string | null) => {
     try {
-      const [mine, relevant] = tokenValue
-        ? await Promise.all([listMyWalkthroughsWithToken(tokenValue), findRelevantWalkthroughsWithToken(originToUse, pathToUse, tokenValue)])
-        : await Promise.all([listMyWalkthroughs(), findRelevantWalkthroughs(originToUse, pathToUse)]);
+      const mine = tokenValue
+        ? await listMyWalkthroughsWithToken(tokenValue)
+        : await listMyWalkthroughs();
       setMyWalkthroughs(mine);
-      setRelevantWalkthroughs(relevant);
-      setLastRelevantFetchInfo(`origin=${originToUse} path=${pathToUse} count=${relevant.length}`);
-      setStatus(`Loaded walkthroughs. ${relevant.length} relevant walkthrough(s) found.`);
+      setStatus(`Loaded saved walkthroughs. ${mine.length} available.`);
     } catch (err: any) {
-      const cached = await getCachedWalkthroughs(originToUse, pathToUse);
-      if (cached) {
-        setRelevantWalkthroughs(cached);
-        setLastRelevantFetchInfo(`origin=${originToUse} path=${pathToUse} cached=${cached.length}`);
-        setStatus("Offline: using cached walkthroughs.");
-      } else {
-        setLastRelevantFetchInfo(`origin=${originToUse} path=${pathToUse} error=${err?.message || err}`);
-        setStatus("Could not load walkthroughs.");
-      }
+      setStatus("Could not load saved walkthroughs.");
     }
   };
 
@@ -242,7 +228,6 @@ function App() {
     await clearToken();
     setTokenState(null);
     setMyWalkthroughs([]);
-    setRelevantWalkthroughs([]);
     setStatus("Signed out.");
   };
 
@@ -302,7 +287,7 @@ function App() {
       await persistDraftPathPattern("%/*");
       await clearPendingSteps();
       setStatus("Walkthrough saved.");
-      await refreshWalkthroughs(token, origin, path);
+      await refreshWalkthroughs(token);
     } catch (err: any) {
       setError(err.message || "Failed to save walkthrough.");
     }
@@ -333,7 +318,7 @@ function App() {
       await deleteWalkthrough(id);
       setMyWalkthroughs((prev) => prev.filter((item) => item.id !== id));
       setStatus("Walkthrough deleted.");
-      await refreshWalkthroughs(token, origin, path);
+      await refreshWalkthroughs(token);
     } catch (err: any) {
       setError(err.message || "Failed to delete walkthrough.");
     }
@@ -420,7 +405,6 @@ function App() {
                 }}
                 placeholder="Step description"
               />
-              <div className="target-preview">Target: {step.target.selector || step.target.id || step.target.text || "unknown"}</div>
             </div>
           ))}
         </div>
@@ -452,22 +436,7 @@ function App() {
   const playbackPane = (
     <div>
       <section>
-        <h2>Relevant Walkthroughs</h2>
-        {relevantWalkthroughs.length ? (
-          relevantWalkthroughs.map((walkthrough) => (
-            <div key={`relevant-${walkthrough.id}`} className="walkthrough-card">
-              <strong>{walkthrough.title}</strong>
-              <div>{walkthrough.origin}{walkthrough.pathPattern ? ` ${walkthrough.pathPattern}` : ""}</div>
-              <div>{walkthrough.steps.length} steps</div>
-              <button className="secondary" onClick={() => handleStartPlayback(walkthrough)}>Start Playback</button>
-            </div>
-          ))
-        ) : (
-          <div>No walkthroughs found for this page.</div>
-        )}
-      </section>
-      <section>
-        <h2>All Saved Walkthroughs</h2>
+        <h2>Saved Walkthroughs</h2>
         {myWalkthroughs.length ? (
           myWalkthroughs.map((walkthrough) => (
             <div key={`all-${walkthrough.id}`} className="walkthrough-card">
